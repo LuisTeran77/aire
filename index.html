@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calidad del Aire - Qingping</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background-color: #1e293b;
+      padding: 2rem;
+      border-radius: 16px;
+      width: 320px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 1.25rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+    }
+    .label { font-size: 0.95rem; color: #cbd5e1; }
+    .val { font-size: 1.2rem; font-weight: bold; color: #38bdf8; }
+    .status { text-align: center; color: #a1a1aa; font-size: 0.9rem; }
+    .error { color: #f87171; font-size: 0.8rem; margin-top: 12px; word-break: break-all; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Mi Qingping Air Monitor</h2>
+    <div id="status" class="status">Cargando datos...</div>
+    
+    <div id="data-container" style="display:none;">
+      <div class="metric"><span class="label">Temperatura:</span> <span id="temp" class="val">--</span></div>
+      <div class="metric"><span class="label">Humedad:</span> <span id="hum" class="val">--</span></div>
+      <div class="metric"><span class="label">CO₂:</span> <span id="co2" class="val">--</span></div>
+      <div class="metric"><span class="label">PM2.5:</span> <span id="pm25" class="val">--</span></div>
+    </div>
+
+    <div id="debug" class="error"></div>
+  </div>
+
+  <script>
+    // Pon aquí tus claves reales dentro de las comillas
+    const APP_KEY = "mv-4FoXvR";
+    const APP_SECRET = "d5b8053cb8f511f18ac652540055385a";
+
+    async function cargarCalidadAire() {
+      const status = document.getElementById('status');
+      const container = document.getElementById('data-container');
+      const debug = document.getElementById('debug');
+
+      try {
+        const authHeader = btoa(`${APP_KEY}:${APP_SECRET}`);
+        const tokenRes = await fetch('https://developer.qingping.co/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${authHeader}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: 'grant_type=client_credentials&scope=device_full_access'
+        });
+
+        const tokenData = await tokenRes.json();
+
+        if (!tokenData.access_token) {
+          status.innerText = 'Error de autenticación';
+          debug.innerText = JSON.stringify(tokenData);
+          return;
+        }
+
+        const devRes = await fetch('https://developer.qingping.co/v1/apis/devices', {
+          headers: {
+            'Authorization': `Bearer ${tokenData.access_token}`
+          }
+        });
+
+        const devData = await devRes.json();
+        const list = devData.devices || devData.data || [];
+
+        if (list.length === 0) {
+          status.innerText = 'No se encontraron dispositivos';
+          debug.innerText = JSON.stringify(devData);
+          return;
+        }
+
+        const metrics = list[0].data || list[0].sensor_data || {};
+
+        document.getElementById('temp').innerText = metrics.temperature?.value !== undefined ? `${metrics.temperature.value} °C` : '--';
+        document.getElementById('hum').innerText = metrics.humidity?.value !== undefined ? `${metrics.humidity.value} %` : '--';
+        document.getElementById('co2').innerText = metrics.co2?.value !== undefined ? `${metrics.co2.value} ppm` : '--';
+        document.getElementById('pm25').innerText = metrics.pm25?.value !== undefined ? `${metrics.pm25.value} µg/m³` : '--';
+
+        status.style.display = 'none';
+        container.style.display = 'block';
+
+      } catch (err) {
+        status.innerText = 'Error al conectar con Qingping';
+        debug.innerText = err.message;
+      }
+    }
+
+    cargarCalidadAire();
+  </script>
+</body>
+</html>
