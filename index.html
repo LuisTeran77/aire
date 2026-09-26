@@ -62,6 +62,9 @@
     const APP_KEY = "mv-4FoXvR";
     const APP_SECRET = "d5b8053cb8f511f18ac652540055385a";
 
+    // Proxy libre de API keys obligatorio para CORS
+    const PROXY = "https://thingproxy.freeboard.io/fetch/";
+
     async function cargarCalidadAire() {
       const status = document.getElementById('status');
       const container = document.getElementById('data-container');
@@ -70,11 +73,10 @@
       try {
         const authHeader = btoa(`${APP_KEY}:${APP_SECRET}`);
         
-        // Proxy para evitar bloqueo CORS
-        const tokenTarget = 'https://developer.qingping.co/oauth2/token';
-        const proxyTokenUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(tokenTarget)}`;
+        // 1. Obtener Token
+        const tokenUrl = PROXY + 'https://developer.qingping.co/oauth2/token';
 
-        const tokenRes = await fetch(proxyTokenUrl, {
+        const tokenRes = await fetch(tokenUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Basic ${authHeader}`,
@@ -91,10 +93,9 @@
           return;
         }
 
-        const devTarget = 'https://developer.qingping.co/v1/apis/devices';
-        const proxyDevUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(devTarget)}`;
-
-        const devRes = await fetch(proxyDevUrl, {
+        // 2. Obtener Dispositivos
+        const devUrl = PROXY + 'https://developer.qingping.co/v1/apis/devices';
+        const devRes = await fetch(devUrl, {
           headers: {
             'Authorization': `Bearer ${tokenData.access_token}`
           }
